@@ -1,7 +1,5 @@
 import pdfplumber
 import time
-# from google import genai
-# from google.genai import types
 from groq import Groq
 import os
 from dotenv import load_dotenv
@@ -9,8 +7,6 @@ import json
 import sys                                                
 sys.stdout.reconfigure(encoding='utf-8') 
 load_dotenv()
-# print("API KEY:", os.getenv("GEMINI_API_KEY"))
-# client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 #************READ PDF****************#
@@ -21,47 +17,8 @@ def read_pdf(filename):
       for page in pdf.pages:
          text += page.extract_text()
       return text.encode("utf-8", errors="ignore").decode("utf-8")
-    
-# resume_text=read_pdf("Resume_81.pdf")
-# print(resume_text)
-
+   
 #********AKING API***********#
-
-# def ask_ai(prompt):
-#    response = client.models.generate_content(
-#       model="gemini-1.5-flash",
-#       contents=prompt
-#    )
-#    return response.text.strip()
-
-
-
-# from google.genai import types # Add this to your imports at the top
-
-# def ask_ai(prompt):
-#     try:
-#         response = client.models.generate_content(
-#             model="gemini-2.0-flash-lite",
-#             contents=prompt,
-#             config=types.GenerateContentConfig(
-#                 response_mime_type="application/json",
-#             ),
-#         )
-#         return response.text.strip()
-        
-#     except Exception as e:
-#         print(f"\n[!] API Error encountered: {e}")
-#         print("[!] Waiting 15 seconds before retrying...")
-#         time.sleep(15) 
-        
-#         response = client.models.generate_content(
-#             model="gemini-2.0-flash-lite",
-#             contents=prompt,
-#             config=types.GenerateContentConfig(
-#                 response_mime_type="application/json",
-#             ),
-#         )
-#         return response.text.strip()
 
 def ask_ai(prompt):
    response = client.chat.completions.create(
@@ -225,5 +182,10 @@ def print_results(data):
 resume_text=read_pdf("Resume_81.pdf")
 resume_data = parse_resume(resume_text)
 print_results(resume_data)
+
+with open("resume_output.json", "w", encoding="utf-8") as f:
+    json.dump(resume_data, f, indent=2, ensure_ascii=False)
+
+print("\n Resume data saved to resume_output.json ✓")
 
    
