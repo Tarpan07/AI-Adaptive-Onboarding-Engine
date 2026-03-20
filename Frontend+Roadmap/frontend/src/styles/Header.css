@@ -1,0 +1,105 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 0 30px;
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 25%, rgba(99,235,175,0.35) 50%, rgba(255,255,255,0.08) 75%, transparent) 1;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-size: 50px;
+  letter-spacing: 3px;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+.logo-acc  { color: var(--accent); }
+.logo-dot  { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin: 0 2px 12px; display: inline-block; }
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.header-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  background: rgba(99,235,175,0.07);
+  color: var(--accent);
+  border: 1px solid rgba(99,235,175,0.2);
+  padding: 5px 12px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+.header-badge::before {
+  content: '';
+  position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(99,235,175,0.12), transparent);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+.settings-btn {
+  width: 32px; height: 32px;
+  background: var(--bg2); border: 1px solid var(--border-hi);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--muted2); transition: all 0.2s;
+  flex-shrink: 0;
+}
+.settings-btn:hover { color: var(--accent); border-color: rgba(99,235,175,0.3); }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+.modal {
+  background: #0d0f14; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px; width: 100%; max-width: 440px;
+  padding: 28px; animation: fadeUp 0.25s ease;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.modal-title  { font-family: var(--font-display); font-size: 22px; letter-spacing: 1.5px; text-transform: uppercase; }
+.modal-close  { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; transition: color 0.15s; }
+.modal-close:hover { color: var(--text); }
+.modal-label  { font-size: 10px; font-weight: 700; color: var(--muted2); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.modal-badge  { background: rgba(99,235,175,0.08); color: var(--accent); font-size: 9px; padding: 2px 7px; border-radius: 4px; font-family: var(--font-mono); border: 1px solid rgba(99,235,175,0.2); text-transform: none; font-weight: 400; }
+.modal-input  { width: 100%; background: #13161d; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px 14px; color: var(--text); font-family: var(--font-mono); font-size: 12px; outline: none; transition: border-color 0.2s; margin-bottom: 10px; }
+.modal-input:focus { border-color: rgba(99,235,175,0.4); box-shadow: 0 0 0 3px rgba(99,235,175,0.07); }
+.modal-input::placeholder { color: var(--muted); font-family: var(--font-body); font-size: 13px; }
+.modal-hint   { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.modal-body   { margin-bottom: 22px; }
+.modal-footer { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.btn-ghost {
+  background: transparent; color: var(--muted2);
+  border: 1px solid var(--border-hi); border-radius: 8px;
+  padding: 11px 20px; font-family: var(--font-body); font-size: 13px;
+  font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.22); }
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+  .header-badge { display: none; }
+  .logo { font-size: 22px; }
+}
+
+.start-over-btn {
+  background: transparent; color: var(--muted2);
+  border: 1px solid var(--border-hi); border-radius: 7px;
+  padding: 7px 14px; font-family: var(--font-body); font-size: 11px;
+  font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.start-over-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.22); }
+@media (max-width: 480px) { .start-over-btn { display: none; } }
+
+/* Responsive logo and header */
+.logo { font-size: clamp(32px, 6vw, 50px); }
+.logo-dot { width: clamp(5px, 0.9vw, 7px); height: clamp(5px, 0.9vw, 7px); margin-bottom: clamp(8px, 1.5vw, 12px); }
+@media (max-width: 480px) { .header-badge { display: none; } }
