@@ -1,3 +1,4 @@
+//PAGE NAME HEADING AND SETTINGS ICON// HEADER
 import React, { useState } from 'react';
 import '../styles/Header.css';
 

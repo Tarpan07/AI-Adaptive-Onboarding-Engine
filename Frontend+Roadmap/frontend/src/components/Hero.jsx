@@ -1,6 +1,8 @@
+//intro LINES ANIMATIONS
 import React, { useEffect, useRef, useState } from 'react';
 import '../styles/Hero.css';
 
+//ANIMATION text
 const LINES = [
   { key: 0, text: 'YOUR PERSONALIZED', speed: 48 },
   { key: 1, text: 'LEARNING PATH.',    speed: 64 },
@@ -30,6 +32,7 @@ export default function Hero() {
     return () => clearTimeout(timerRef.current);
   }, []);
 
+  //other hero contents
   return (
     <div className="hero">
       <div className="hero-inner">

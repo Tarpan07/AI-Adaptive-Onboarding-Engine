@@ -1,3 +1,4 @@
+//LOADING page
 import React from 'react';
 
 export default function LoadingPanel({ status, sub }) {

@@ -1,3 +1,5 @@
+//UPLOAD SECTIONS with analyse button
+
 import React, { useState } from 'react';
 import DropZone from './DropZone';
 import '../styles/UploadPanel.css';
