@@ -1,3 +1,4 @@
+//2nd page skills/ skills gap
 import React, { useState, useEffect } from 'react';
 import { getCoursesForSkill } from '../data/rolesDatabase';
 import '../styles/SkillGapPanel.css';
