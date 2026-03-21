@@ -1,241 +1,214 @@
-//2nd page skills/ skills gap
 import React, { useState, useEffect } from 'react';
-import { getCoursesForSkill } from '../data/rolesDatabase';
+import useCountUp from '../hooks/useCountUp';
+import SkillGapRow from './SkillGapRow';
+import RoadmapNode from './RoadmapNode';
+import ReasoningCard from './ReasoningCard';
 import '../styles/SkillGapPanel.css';
 
-function useCountUp(target, duration = 1200) {
-  const [val, setVal] = useState(0);
-  useEffect(() => {
-    let start = null;
-    const step = (ts) => {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / duration, 1);
-      setVal(Math.round((1 - Math.pow(1 - p, 3)) * target));
-      if (p < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [target, duration]);
-  return val;
-}
-
-const STATUS_CYCLE = ['○ not started', '▶ in progress', '✓ done'];
-const STATUS_CLASS  = ['status-idle',   'status-active',  'status-done'];
-
-const LEVEL_COLOR = { Beginner: 'level-beginner', Intermediate: 'level-intermediate', Advanced: 'level-advanced' };
-
-// ── Skill Gap Row (clickable → shows courses) ──────────────
-function SkillGapRow({ skill, type, index }) {
-  const [open,   setOpen]   = useState(false);
-  const [status, setStatus] = useState(0);
-  const courses = getCoursesForSkill(skill.name);
-
-  return (
-    <div className={`skill-row skill-row-${type}`} style={{ animationDelay: `${index * 0.05}s` }}>
-      <div className="skill-row-header" onClick={() => setOpen(o => !o)}>
-        <div className="skill-row-left">
-          <div className={`skill-dot-lg skill-dot-${type}`} />
-          <div>
-            <div className="skill-row-name">{skill.name}</div>
-            <div className="skill-row-meta">
-              {type === 'gap'     && <>Required: <strong>{skill.required_level}</strong> · {skill.reason}</>}
-              {type === 'partial' && <>Current: <strong>{skill.current_level}</strong> → Required: <strong>{skill.required_level}</strong> · {skill.reason}</>}
-            </div>
-          </div>
-        </div>
-        <div className="skill-row-right">
-          <button
-            className={`status-pill ${STATUS_CLASS[status]}`}
-            onClick={e => { e.stopPropagation(); setStatus(s => (s + 1) % 3); }}
-          >
-            {STATUS_CYCLE[status]}
-          </button>
-          <div className={`skill-expand ${open ? 'open' : ''}`}>
-            {open ? '▲ hide' : `▼ ${courses.length} courses`}
-          </div>
-        </div>
-      </div>
-
-      {open && (
-        <div className="courses-drawer">
-          <div className="courses-label">Courses for {skill.name}</div>
-          <div className="courses-grid">
-            {courses.map((c, i) => (
-              <a key={i} href={c.url} target="_blank" rel="noreferrer" className="course-card">
-                <div className="course-top">
-                  <span className="course-provider">{c.provider}</span>
-                  {c.free && <span className="course-free">FREE</span>}
-                </div>
-                <div className="course-title">{c.title}</div>
-                <div className="course-meta">{c.duration} · {c.level}</div>
-                <div className="course-cta">Open →</div>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Roadmap Node ──────────────────────────────────────────
-function RoadmapNode({ module, index }) {
-  const [status, setStatus] = useState(0);
-  return (
-    <div className="roadmap-node" style={{ animationDelay: `${index * 0.08}s` }}>
-      <div className={`node-num ${module.priority}`}>
-        {String(index + 1).padStart(2, '0')}
-      </div>
-      <div className="node-body">
-        <div className="node-header">
-          <div className="node-title">{module.title}</div>
-          <div className="node-header-right">
-            <button
-              className={`status-pill ${STATUS_CLASS[status]}`}
-              onClick={() => setStatus(s => (s + 1) % 3)}
-            >
-              {STATUS_CYCLE[status]}
-            </button>
-            <div className={`node-pill ${module.priority}`}>{module.priority}</div>
-          </div>
-        </div>
-        <div className="node-desc">{module.description}</div>
-        <div className="node-tags">
-          {(module.tags || []).map(t => <span key={t} className="node-tag">{t}</span>)}
-        </div>
-        <div className="node-duration">
-          <span className="dur-dot" />
-          ~{module.duration_weeks} week{module.duration_weeks !== 1 ? 's' : ''} estimated
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Main Panel ────────────────────────────────────────────
 export default function SkillGapPanel({ data, onReset }) {
   const [barWidth, setBarWidth] = useState(0);
-  const matchPct  = useCountUp(data.match_percent);
-  const haveCnt   = useCountUp((data.skills_have    || []).length, 1000);
-  const gapCnt    = useCountUp((data.skills_gap     || []).length, 1000);
-  const weekCnt   = useCountUp((data.roadmap || []).reduce((a, m) => a + (m.duration_weeks || 0), 0), 1100);
-  const partCnt   = useCountUp((data.skills_partial || []).length, 1000);
+  const [stepStatuses, setStepStatuses] = useState(() =>
+    (data.learning_path || []).map((s) => ({ status: 0, weeks: s.duration_weeks || 0 }))
+  );
 
-  useEffect(() => { setTimeout(() => setBarWidth(data.match_percent), 120); }, [data.match_percent]);
+  const stats        = data.summary_stats  || {};
+  const learningPath = data.learning_path  || [];
+  const expandedGaps = data.expanded_gaps  || data.skill_gaps || [];
+  const totalWeeks   = stats.total_weeks   || 0;
 
-  const totalGaps = (data.skills_gap || []).length + (data.skills_partial || []).length;
+  // Animated counters
+  const matchPct = useCountUp(data.match_percent || 0);
+  const haveCnt  = useCountUp((data.skills_have || []).length, 1000);
+  const gapCnt   = useCountUp(stats.original_gaps || (data.skill_gaps || []).length, 1000);
+  const stepCnt  = useCountUp(stats.total_steps || learningPath.length, 1000);
+  const weekCnt  = useCountUp(totalWeeks, 1100);
+
+  // Animate readiness bar in
+  useEffect(() => { setTimeout(() => setBarWidth(data.match_percent || 0), 120); }, [data.match_percent]);
+
+  // Progress tracking
+  const doneCount = stepStatuses.filter(s => s.status === 2).length;
+  const ipCount   = stepStatuses.filter(s => s.status === 1).length;
+  const todoCount = stepStatuses.filter(s => s.status === 0).length;
+  const doneWeeks = stepStatuses.filter(s => s.status === 2).reduce((a, s) => a + s.weeks, 0);
+  const ipWeeks   = stepStatuses.filter(s => s.status === 1).reduce((a, s) => a + s.weeks, 0);
+  const remWeeks  = stepStatuses.filter(s => s.status <  2).reduce((a, s) => a + s.weeks, 0);
+  const donePct   = totalWeeks ? Math.round((doneWeeks / totalWeeks) * 100) : 0;
+  const ipPct     = totalWeeks ? Math.round((ipWeeks   / totalWeeks) * 100) : 0;
+
+  const handleStatusChange = (index, newStatus, weeks) => {
+    setStepStatuses(prev => {
+      const next = [...prev];
+      next[index] = { status: newStatus, weeks };
+      return next;
+    });
+  };
+
+  // Level badge class
+  const expLevel = (data.experience_level || '').toLowerCase();
+  const levelBadgeClass = `level-badge ${expLevel}`;
 
   return (
-    <div className="skillgap-panel panel-anim">
+    <div className="panel-anim">
 
-      {/* Candidate + role header */}
-      <div className="profile-header">
+      {/* ── Profile card ───────────────────────────────────── */}
+      <div className="profile-card">
         <div className="profile-avatar">
           {(data.candidate_name || 'U').split(' ').map(w => w[0]).slice(0, 2).join('')}
         </div>
         <div className="profile-info">
-          <div className="profile-name">{data.candidate_name || 'Your Profile'}</div>
+          <div className="profile-name">{data.candidate_name || 'Candidate'}</div>
           <div className="profile-meta">
             {data.years_experience} yrs experience
             {data.current_title ? ` · ${data.current_title}` : ''}
           </div>
           <div className="profile-meta">{data.summary}</div>
         </div>
-        <div className={`level-badge ${LEVEL_COLOR[data.experience_level]}`}>
-          {data.experience_level}
-        </div>
+        <div className={levelBadgeClass}>{data.experience_level || 'Intermediate'}</div>
       </div>
 
-      {/* Role */}
+      {/* ── Role banner ────────────────────────────────────── */}
       <div className="role-banner">
         <div className="role-banner-left">
           <div className="role-banner-label">Target Role</div>
-          <div className="role-banner-title">{data.role_title}</div>
+          <div className="role-banner-title">{data.job_title}</div>
+          {stats.skill_gap_summary && (
+            <div className="role-banner-summary">{stats.skill_gap_summary}</div>
+          )}
         </div>
-        <div className="role-match-circle">
-          <div className="rmc-pct">{matchPct}%</div>
-          <div className="rmc-label">match</div>
+        <div className="match-circle">
+          <div className="match-circle-pct">{matchPct}%</div>
+          <div className="match-circle-label">match</div>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* ── Stat cards ─────────────────────────────────────── */}
       <div className="stats-row">
         <div className="stat-card green">
           <div className="stat-label">Skills Ready</div>
-          <div className="stat-value green">{haveCnt}</div>
+          <div className="stat-value">{haveCnt}</div>
         </div>
         <div className="stat-card red">
           <div className="stat-label">Skill Gaps</div>
-          <div className="stat-value red">{gapCnt}</div>
+          <div className="stat-value">{gapCnt}</div>
         </div>
         <div className="stat-card amber">
-          <div className="stat-label">Partial Skills</div>
-          <div className="stat-value amber">{partCnt}</div>
+          <div className="stat-label">Training Steps</div>
+          <div className="stat-value">{stepCnt}</div>
         </div>
         <div className="stat-card purple">
           <div className="stat-label">Weeks to Ready</div>
-          <div className="stat-value purple">{weekCnt}</div>
+          <div className="stat-value">{weekCnt}</div>
         </div>
       </div>
 
-      {/* Match bar */}
-      <div className="match-bar-card">
-        <div className="match-bar-header">
-          <div className="match-bar-label">Role Readiness</div>
-          <div className="match-bar-pct">{matchPct}%</div>
+      {/* ── Readiness bar ──────────────────────────────────── */}
+      <div className="readiness-card">
+        <div className="readiness-header">
+          <div className="readiness-label">Role Readiness</div>
+          <div className="readiness-pct">{matchPct}%</div>
         </div>
-        <div className="match-bar-track">
-          <div className="match-bar-fill" style={{ width: `${barWidth}%` }} />
-        </div>
-      </div>
-
-      {/* Skills you have */}
-      <div className="skills-have-card">
-        <div className="skills-have-label">✅ Skills you already have</div>
-        <div className="skills-have-tags">
-          {(data.skills_have || []).map(s => (
-            <span key={s.name} className="skill-tag have">
-              <span className="skill-dot" />{s.name}
-              <span className="skill-tag-level">{s.level}</span>
-            </span>
-          ))}
+        <div className="readiness-track">
+          <div className="readiness-fill" style={{ width: `${barWidth}%` }} />
         </div>
       </div>
 
-      {/* Skill gaps — clickable */}
-      {totalGaps > 0 && (
+      {/* ── Skills you already have ────────────────────────── */}
+      {(data.skills_have || []).length > 0 && (
+        <div className="skills-have-card">
+          <div className="skills-have-label">✅ Skills you already have</div>
+          <div className="skills-have-tags">
+            {(data.skills_have || []).map(s => (
+              <span key={s.name} className="skill-tag">
+                <span className="skill-tag-dot" />
+                {s.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Skill Gap Report ───────────────────────────────── */}
+      {expandedGaps.length > 0 && (
         <>
           <div className="section-heading">
             Skill Gap Report
-            <span className="section-sub">Click any skill to see recommended courses</span>
+            {stats.prerequisites_added > 0 && (
+              <span className="section-sub">
+                {stats.prerequisites_added} prerequisite{stats.prerequisites_added !== 1 ? 's' : ''} auto-added
+              </span>
+            )}
           </div>
-          <div className="skills-list">
-            {(data.skills_gap || []).map((s, i) => (
-              <SkillGapRow key={s.name} skill={s} type="gap" index={i} />
-            ))}
-            {(data.skills_partial || []).map((s, i) => (
-              <SkillGapRow key={s.name} skill={s} type="partial" index={(data.skills_gap || []).length + i} />
+          <div className="skills-list" style={{ marginBottom: 32 }}>
+            {expandedGaps.map((gap, i) => (
+              <SkillGapRow key={`${gap.skill}-${i}`} gap={gap} />
             ))}
           </div>
         </>
       )}
 
-      {/* Roadmap */}
-      {(data.roadmap || []).length > 0 && (
+      {/* ── Personalised Learning Roadmap ──────────────────── */}
+      {learningPath.length > 0 && (
         <>
-          <div className="section-heading" style={{ marginTop: '32px' }}>
+          <div className="section-heading" style={{ marginTop: 32 }}>
             Personalised Learning Roadmap
-            <span className="section-sub">Adapted for {data.experience_level} level</span>
+            <span className="section-sub">
+              {stats.total_steps} steps · {stats.total_weeks} weeks · Adapted for {data.experience_level} level
+            </span>
           </div>
+
+          {/* Progress tracker */}
+          <div className="rdm-progress-card">
+            <div className="rdm-progress-top">
+              <div className="rdm-progress-title">Learning progress</div>
+              <div className="rdm-progress-stats">
+                <div className="rdm-ps">
+                  <div className="rdm-ps-dot done" />
+                  {doneCount} done
+                </div>
+                <div className="rdm-divider" />
+                <div className="rdm-ps">
+                  <div className="rdm-ps-dot ip" />
+                  {ipCount} in progress
+                </div>
+                <div className="rdm-divider" />
+                <div className="rdm-ps">
+                  <div className="rdm-ps-dot todo" />
+                  {todoCount} not started
+                </div>
+              </div>
+            </div>
+            <div className="rdm-progress-track">
+              <div className="rdm-pf-done" style={{ width: `${donePct}%` }} />
+              <div className="rdm-pf-ip"   style={{ left: `${donePct}%`, width: `${ipPct}%` }} />
+            </div>
+            <div className="rdm-weeks-left">
+              Remaining: <span>{remWeeks}</span> weeks
+            </div>
+          </div>
+
+          {/* Node list */}
           <div className="roadmap">
-            {(data.roadmap || []).map((m, i) => (
-              <RoadmapNode key={i} module={m} index={i} />
+            {learningPath.map((step, i) => (
+              <RoadmapNode
+                key={step.step_number}
+                step={step}
+                index={i}
+                onStatusChange={handleStatusChange}
+              />
             ))}
           </div>
         </>
       )}
+
+      {/* ── AI Reasoning Trace ─────────────────────────────── */}
+      <ReasoningCard
+        points={data.reasoning_points || []}
+        traceText={data.reasoning_trace}
+      />
 
       <div className="results-divider" />
-      <button className="btn-primary" onClick={onReset}>← Start Over</button>
+      <button className="btn-start-over" onClick={onReset}>← Start Over</button>
     </div>
   );
 }

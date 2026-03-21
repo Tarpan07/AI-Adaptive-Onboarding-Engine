@@ -13,6 +13,7 @@ backend/staticfiles/
 
 # Node
 frontend/skillmap/node_modules/
+frontend/node_modules/
 frontend/build/
 frontend/.env
 
@@ -26,3 +27,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+backend/resume.pdf
+backend/test_api.py
+backend/job_description.pdf

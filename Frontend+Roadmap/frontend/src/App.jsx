@@ -1,64 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './styles/App.css';
-import Header from './components/Header';
-import Hero from './components/Hero';
-import TabNav from './components/TabNav';
-import UploadPanel from './components/UploadPanel';
-import LoadingPanel from './components/LoadingPanel';
+import Header        from './components/Header';
+import TabNav        from './components/TabNav';
+import Hero          from './components/Hero';
+import UploadPanel   from './components/UploadPanel';
+import LoadingPanel  from './components/LoadingPanel';
 import SkillGapPanel from './components/SkillGapPanel';
-import { analyzeProfile } from './services/claudeApi';
-
-const SAMPLE_RESULT = {
-  candidate_name: 'Jane Smith',
-  years_experience: 5,
-  current_title: 'Senior Software Engineer',
-  experience_level: 'Advanced',
-  role_title: 'Machine Learning Engineer',
-  summary: 'Experienced software engineer with strong Python and React background. Transitioning toward ML engineering with foundational exposure.',
-  match_percent: 52,
-  skills_have: [
-    { name: 'Python',    level: 'advanced' },
-    { name: 'REST APIs', level: 'advanced' },
-    { name: 'Docker',    level: 'intermediate' },
-    { name: 'AWS',       level: 'intermediate' },
-    { name: 'SQL',       level: 'intermediate' },
-    { name: 'React',     level: 'advanced' },
-    { name: 'Git',       level: 'advanced' },
-    { name: 'CI/CD',     level: 'intermediate' },
-  ],
-  skills_partial: [
-    { name: 'Machine Learning', current_level: 'beginner', required_level: 'intermediate', reason: 'scikit-learn exposure is good but production ML needed' },
-  ],
-  skills_gap: [
-    { name: 'PyTorch',      required_level: 'advanced',     priority: 'high',   reason: 'Core framework for model training' },
-    { name: 'MLOps',        required_level: 'intermediate', priority: 'high',   reason: 'Required for deployment and monitoring pipelines' },
-    { name: 'Kubernetes',   required_level: 'intermediate', priority: 'medium', reason: 'Used for scaling ML workloads in production' },
-    { name: 'Apache Spark', required_level: 'beginner',     priority: 'medium', reason: 'Data pipeline processing at scale' },
-    { name: 'Airflow',      required_level: 'beginner',     priority: 'low',    reason: 'Workflow orchestration for training jobs' },
-  ],
-  roadmap: [
-    { title: 'Machine Learning — Intermediate Level', description: 'Skip theory. Focus on production patterns: model evaluation, bias detection, A/B testing ML models, and serving strategies adapted for your Advanced engineering background.', priority: 'high', duration_weeks: 3, skill_name: 'Machine Learning', tags: ['scikit-learn', 'Model evaluation', 'Feature engineering'] },
-    { title: 'PyTorch — Advanced Deep Learning', description: 'Custom training loops, distributed training, model optimization (quantization, pruning), and ONNX export for production deployment — skipping beginner PyTorch basics.', priority: 'high', duration_weeks: 4, skill_name: 'PyTorch', tags: ['PyTorch', 'Distributed training', 'ONNX', 'Model optimization'] },
-    { title: 'MLOps & Production Pipelines', description: 'MLflow for experiment tracking, model registry, and deployment automation. Build a complete training-to-serving pipeline leveraging your existing Docker and CI/CD skills.', priority: 'high', duration_weeks: 3, skill_name: 'MLOps', tags: ['MLflow', 'Model serving', 'CI/CD for ML', 'Monitoring'] },
-    { title: 'Kubernetes for ML Workloads', description: 'Extend your Docker knowledge to Kubernetes. Focus on GPU scheduling, resource limits, autoscaling, and Kubeflow for ML workflow orchestration.', priority: 'medium', duration_weeks: 3, skill_name: 'Kubernetes', tags: ['Kubernetes', 'Kubeflow', 'GPU scheduling', 'Helm'] },
-    { title: 'Data Pipelines — Spark & Airflow', description: 'PySpark for large-scale feature engineering and Airflow for scheduling training jobs. Build an end-to-end pipeline that feeds a training job automatically.', priority: 'low', duration_weeks: 2, skill_name: 'Apache Spark', tags: ['PySpark', 'Apache Airflow', 'ETL', 'Feature store'] },
-  ],
-};
+import { analyzeProfile, checkHealth } from './services/backendApi';
+import { SAMPLE_RESULT } from './data/sampleData';
 
 export default function App() {
-  const [activeTab,      setActiveTab]      = useState('upload');
-  const [isLoading,      setIsLoading]      = useState(false);
-  const [results,        setResults]        = useState(null);
-  const [loaderStatus,   setLoaderStatus]   = useState('');
-  const [loaderSub,      setLoaderSub]      = useState('');
+  const [activeTab,     setActiveTab]     = useState('upload');
+  const [isLoading,     setIsLoading]     = useState(false);
+  const [results,       setResults]       = useState(null);
+  const [loaderStatus,  setLoaderStatus]  = useState('');
+  const [loaderSub,     setLoaderSub]     = useState('');
+  const [streamLog,     setStreamLog]     = useState([]);
+  const [backendOnline, setBackendOnline] = useState(null); // null=checking, true, false
 
   const resultsUnlocked = !!results;
 
-  const handleAnalyze = async ({ resumeText, jdText }) => {
+  // ── Ping backend on mount ──────────────────────────────────
+  useEffect(() => {
+    checkHealth().then(ok => setBackendOnline(ok));
+  }, []);
+
+  // ── Scroll to top on view change ───────────────────────────
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [activeTab, isLoading]);
+
+  // ── Analyze handler — receives PDF File objects ────────────
+  const handleAnalyze = async ({ resumeFile, jdFile }) => {
     setIsLoading(true);
+    setStreamLog([]);
     try {
-      const data = await analyzeProfile(resumeText, jdText,
-        (s, b) => { setLoaderStatus(s); setLoaderSub(b); }
+      const data = await analyzeProfile(
+        resumeFile,
+        jdFile,
+        (s, b) => { setLoaderStatus(s); setLoaderSub(b); },
+        (line)  => setStreamLog(prev => [...prev, line])
       );
       setResults(data);
       setActiveTab('results');
@@ -69,17 +50,9 @@ export default function App() {
     }
   };
 
-  const handleSample = () => {
-    setResults(SAMPLE_RESULT);
-    setActiveTab('results');
-  };
-
-  const handleReset = () => {
-    setResults(null);
-    setActiveTab('upload');
-  };
-
-  const handleTabSwitch = (tab) => {
+  const handleSample     = () => { setResults(SAMPLE_RESULT); setActiveTab('results'); };
+  const handleReset      = () => { setResults(null); setActiveTab('upload'); };
+  const handleTabSwitch  = (tab) => {
     if (tab === 'results' && !resultsUnlocked) return;
     setActiveTab(tab);
   };
@@ -88,7 +61,31 @@ export default function App() {
     <div className="app-shell">
       <Header />
 
-      {/* Tab navigation — always visible */}
+      {/* Backend status banner */}
+      {backendOnline === false && (
+        <div style={{
+          background: 'rgba(255,107,107,0.08)',
+          border: '1px solid rgba(255,107,107,0.25)',
+          borderRadius: 10,
+          padding: '10px 16px',
+          fontSize: 12,
+          color: '#ffaaaa',
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          <span>⚠</span>
+          <span>
+            Backend offline — make sure Django is running on{' '}
+            <code style={{ fontFamily: 'Fira Code, monospace', fontSize: 11 }}>
+              {process.env.REACT_APP_API_URL || 'http://localhost:8000'}
+            </code>
+            . You can still load sample data.
+          </span>
+        </div>
+      )}
+
       {!isLoading && (
         <TabNav
           activeTab={activeTab}
@@ -97,7 +94,6 @@ export default function App() {
         />
       )}
 
-      {/* Upload tab */}
       {!isLoading && activeTab === 'upload' && (
         <>
           <Hero />
@@ -105,10 +101,14 @@ export default function App() {
         </>
       )}
 
-      {/* Loading */}
-      {isLoading && <LoadingPanel status={loaderStatus} sub={loaderSub} />}
+      {isLoading && (
+        <LoadingPanel
+          status={loaderStatus}
+          sub={loaderSub}
+          streamLog={streamLog}
+        />
+      )}
 
-      {/* Results tab */}
       {!isLoading && activeTab === 'results' && results && (
         <SkillGapPanel data={results} onReset={handleReset} />
       )}
